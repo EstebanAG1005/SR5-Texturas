@@ -1,8 +1,7 @@
 import struct
 
-
-def _color(r, g, b):
-    return bytes([ int(b * 255), int(g* 255), int(r* 255)])
+def color(r, g, b):
+    return bytes([b, g, r])
 
 class Obj(object):
     def __init__(self, filename):
@@ -32,7 +31,7 @@ class Obj(object):
                 elif prefix == 'f': #Caras
                     self.faces.append( [ list(map(int, vert.split('/'))) for vert in value.split(' ')] )
 
-class Texture:
+class Texture(object):
   def __init__(self, path):
     self.path = path
     self.read()
@@ -63,13 +62,3 @@ class Texture:
     y = round(ty * self.height)
 
     return self.pixels[y][x]
-
-  def get_color_with_intensity(self, tx, ty, intensity):
-    x = round(tx * self.width)
-    y = round(ty * self.height)
-
-    b = round(self.pixels[y][x][0] * intensity)
-    g = round(self.pixels[y][x][1] * intensity)
-    r = round(self.pixels[y][x][2] * intensity)
-
-    return color(r, g, b)
