@@ -20,14 +20,17 @@ def word(c):
 def dword(c):
     return struct.pack('=l', c)
 
+# Funcion de Color
 def color(r, g, b):
     return bytes([int(b * 255), int(g * 255), int(r * 255)])
 
-def decimalToRgb(colors_array):
-    return [round(i*255) for i in colors_array]
+# Funcion que ayuda a convertir floats para poder usar los colores
+def FloatRGB(array):
+    return [round(i*255) for i in array]
 
 # ----------------------------- Parte de Operaciones Matematicas -----------------------------------------
 
+# Coordenadas Baricentricas
 def barycentric(A, B, C, P):
     bary = cross(
         V3(C.x - A.x, B.x - A.x, A.x - P.x), 
@@ -43,13 +46,15 @@ def barycentric(A, B, C, P):
         bary[0] / bary[2]
     )
 
+# Resta
 def sub(v0, v1):
     return V3(v0.x - v1.x, v0.y - v1.y, v0.z - v1.z)
 
-
+# producto punto
 def dot(v0, v1):
     return v0.x * v1.x + v0.y * v1.y + v0.z * v1.z
 
+# Obtiene 2 valores de 3 vectores y devuelve un vector 3 con el producto punto
 def cross(v0, v1):
     return V3(
     v0.y * v1.z - v0.z * v1.y,
@@ -57,9 +62,11 @@ def cross(v0, v1):
     v0.x * v1.y - v0.y * v1.x,
 )
 
+# Regresa el largo del vector
 def length(v0):
     return (v0.x**2 + v0.y**2 + v0.z**2)**0.5
 
+# Normal del vector 
 def norm(v0):
     v0length = length(v0)
 
@@ -68,6 +75,7 @@ def norm(v0):
 
     return V3(v0.x/v0length, v0.y/v0length, v0.z/v0length)
 
+# 2 vectores de tamaño 2 que definen el rectángulo delimitador más pequeño posible
 def bbox(*vertices): 
     xs = [ vertex.x for vertex in vertices ]
     ys = [ vertex.y for vertex in vertices ]
@@ -78,145 +86,116 @@ def bbox(*vertices):
 
 # --------------------------------------------------------------------------------------------------------------------
 
+# Se definen colores Negro y Blanco para nuestro programa
 BLACK = color(0,0,0)
 WHITE = color(1,1,1)
 
 class Render(object):
  
+  # Se inicializan valores
   def __init__(self, width, height):
-        self.curr_color = WHITE
+        self.current_color = WHITE
         self.clear_color = BLACK
         self.glCreateWindow(width, height)
-
         self.light = V3(0,0,1)
         self.active_texture = None
-
+  
+  # Se crea el margen con el cual se va a trabajar
   def glCreateWindow(self, width, height):
       self.width = width
       self.height = height
       self.glClear()
       self.glViewport(0,0, width, height)
 
+  # Se crea el Viewport
   def glViewport(self, x, y, width, height):
-      self.viewport_initial_x = x
-      self.viewport_initial_y = y
-      self.viewport_width = width
-      self.viewport_height = height
-      self.viewport_final_x = x + width
-      self.viewport_final_y = x + height
+      self.VP_IX = x
+      self.VP_IY = y
+      self.VP_W = width
+      self.VP_H = height
+      self.VP_FX = x + width
+      self.VP_FY = x + height
 
+  # Se definen colores con los cuales trabajar
   def glClear(self):
-      self.pixels = [ [ self.clear_color for x in range(self.width)] for y in range(self.height) ]
-  
-      # Zbuffer
-      self.zbuffer = [ [ -float('inf') for x in range(self.width)] for y in range(self.height) ]
-      
+      self.framebuffer = [
+      [self.clear_color for x in range(self.width)] 
+      for y in range(self.height)
+      ]
+      self.zbuffer = [
+        [-float('inf') for x in range(self.width)]
+        for y in range(self.height)
+      ]
+
+  # Se revisa el vertex dentro del viewport en el cual vamos a trabajar
   def glVertextInViewport(self, x,y):
-      return (x >= self.viewport_initial_x and
-          x <= self.viewport_final_x) and (
-          y >= self.viewport_initial_y and
-          y <= self.viewport_final_y)
+      return (x >= self.VP_IX and
+          x <= self.VP_FX) and (
+          y >= self.VP_IY and
+          y <= self.VP_FY)
 
+  # Se definen los colores del BMP para poderlos incluir en el OBJ
   def glClearColor(self, r, g, b):
-      rgb_array = decimalToRgb([r,g,b])
-      self.clear_color = color(rgb_array[0], rgb_array[1], rgb_array[2])
+      array_colors = FloatRGB([r,g,b])
+      self.clear_color = color(array_colors[0], array_colors[1], array_colors[2])
 
+  # Se genera el vertex
   def glVertex(self, x, y, color = None):
       pixelX = ( x + 1) * (self.vpWidth  / 2 ) + self.vpX
       pixelY = ( y + 1) * (self.vpHeight / 2 ) + self.vpY
       try:
-          self.pixels[round(pixelY)][round(pixelX)] = color or self.curr_color
+          self.framebuffer[round(pixelY)][round(pixelX)] = color or self.current_color
       except:
           pass
   
+  # Se definen puntos dentro del Margen establecido
   def glPoint(self, x, y, color = None):
       if x >= self.width or x < 0 or y >= self.height or y < 0:
           return
       try:
-          self.pixels[y][x] = color or self.curr_color
+          self.framebuffer[y][x] = color or self.current_color
       except:
           pass
   
+  # Se definen colores a utilizar
   def glColor(self, r, g, b):
-      rgb_array = decimalToRgb([r,g,b])
-      self.clear_color = color(rgb_array[0], rgb_array[1], rgb_array[2])
-
-  def glFixCoordinate(self, value, main_axis):
-      fixed_coordinate = 0
-      if main_axis:
-          fixed_coordinate = (value+1) * (self.viewport_width/2) + self.viewport_initial_x
-      else:
-          fixed_coordinate = (value+1) * (self.viewport_height/2) + self.viewport_initial_y
-      return round(fixed_coordinate)
-  
+      array_colors = FloatRGB([r,g,b])
+      self.clear_color = color(array_colors[0], array_colors[1], array_colors[2])
       
-  # Generate .bmp fil
+  # Se Genera archivo .BMP
   def glFinish(self, filename):
-      archivo = open(filename, 'wb')
+      f = open(filename, 'bw')
 
-      # File header 14 bytes
-      #archivo.write(char('B'))
-      #archivo.write(char('M'))
+      #file header
+      f.write(char('B'))
+      f.write(char('M'))
+      f.write(dword(14 + 40 + self.width * self.height * 3))
+      f.write(dword(0))
+      f.write(dword(14 + 40))
 
-      archivo.write(bytes('B'.encode('ascii')))
-      archivo.write(bytes('M'.encode('ascii')))
-
-      archivo.write(dword(14 + 40 + self.width * self.height * 3))
-      archivo.write(dword(0))
-      archivo.write(dword(14 + 40))
-
-      # Image Header 40 bytes
-      archivo.write(dword(40))
-      archivo.write(dword(self.width))
-      archivo.write(dword(self.height))
-      archivo.write(word(1))
-      archivo.write(word(24))
-      archivo.write(dword(0))
-      archivo.write(dword(self.width * self.height * 3))
-      archivo.write(dword(0))
-      archivo.write(dword(0))
-      archivo.write(dword(0))
-      archivo.write(dword(0))
+      #image header
+      f.write(dword(40))
+      f.write(dword(self.width))
+      f.write(dword(self.height))
+      f.write(word(1))
+      f.write(word(24))
+      f.write(dword(0))
+      f.write(dword(self.width * self.height * 3))
+      f.write(dword(0))
+      f.write(dword(0))
+      f.write(dword(0))
+      f.write(dword(0))
       
-      # Pixeles, 3 bytes cada uno
+      # pixel data
 
       for x in range(self.height):
           for y in range(self.width):
-              archivo.write(self.pixels[x][y])
+              f.write(self.framebuffer[x][y])
 
-      archivo.close()
+      f.close()
 
-  def glLine(self, v0, v1, color = None) :
-      x0 = self.glFixCoordinate(v0.x, True)
-      x1 = self.glFixCoordinate(v1.x, True)
-      y0 = self.glFixCoordinate(v0.y, False)
-      y1 = self.glFixCoordinate(v1.y, False)
-
-      steep = abs(y1 - y0) > abs(x1 - x0)
-
-      if steep:
-          x0, y0 = y0, x0
-          x1, y1 = y1, x1
-      if x0 > x1:
-          x0, x1 = x1, x0
-          y0, y1 = y1, y0
-
-      dx, dy = abs(x1 - x0), abs(y1 - y0)      
-      
-      offset = 0
-      limit =  0.5
-      y = y0
-
-      for x in range(x0, x1+1):
-          self.glPoint(y, x, color) if steep else self.glPoint(x, y, color)
-          
-          offset += 2*dy
-
-          if offset >= limit:
-              y += 1 if y0 < y1 else -1
-              limit += 2*dx
-
-  def glLine_coord(self, v0, v1, color = None):
+  # Funcion para crear lineas
+  def glLine(self, v0, v1, color = None):
       x0 = v0.x
       x1 = v1.x
       y0 = v0.y
@@ -251,69 +230,14 @@ class Render(object):
               y += 1 if y0 < y1 else -1
               limit += 2*dx        
   
+  # Funcion de Transformacion 
   def transform(self, vertex, translate=V3(0,0,0), scale=V3(1,1,1)):
       return V3(round(vertex[0] * scale.x + translate.x),
                 round(vertex[1] * scale.y + translate.y),
                 round(vertex[2] * scale.z + translate.z))
-  
-  # Check if a given point (x,y) is inside the polygon
-  def glIsPointInPolygon(self, x, y, polygon):
-      # Args:
-      #   x: the x coordinate of point.
-      #   y: the y coordinate of point.
-      #   polygon: a list of tuples [(x, y), (x, y), ...] representing the vertices of the polygon
-
-      # Returns:
-      #   True if the point is in the path.
-      verticesCount = len(polygon)
-      j = verticesCount - 1
-      c = False
-      for i in range(verticesCount):
-          if ((polygon[i][1] > y) != (polygon[j][1] > y)) and \
-                  (x < polygon[i][0] + (polygon[j][0] - polygon[i][0]) * (y - polygon[i][1]) /
-                                  (polygon[j][1] - polygon[i][1])):
-              c = not c
-          j = i
-      return c
-  
-  # Fill the polygon
-  def glFillPolygon(self, polygon):
-      # Args:
-      #   polygon: a list of tuples [(x, y), (x, y), ...] representing the vertices of the polygon
-
-      # Returns:
-      #   nothing
-      
-      minX, maxX, minY, maxY = 0,0,0,0
-      
-      # Calculate the min and max points in x-axis and y-axis for the polygon
-      for i in range(len(polygon)):
-          if(polygon[i][0] < minX):
-              minX = polygon[i][0]
-          elif(polygon[i][0] > maxX):
-              maxX = polygon[i][0]
-          if(polygon[i][1] < minY):
-              minY = polygon[i][1]
-          elif(polygon[i][1] > maxY):
-              maxY = polygon[i][1]
-
-      # Iterate over those numbers and check if every point is in the polygon
-      # If it is, fill it
-      for y in range(minY, maxY):
-          for x in range(minX, maxX):
-              if (self.glIsPointInPolygon(x,y, polygon)):
-                  self.glPoint(x, y)
-  
-  # Draw the polygon joining the dots with glLinge_coord
-  def glDrawPolygon(self, vertices):
-      count = len(vertices)
-
-      for limit in range(count):
-          v0 = vertices[limit]
-          v1 = vertices[(limit + 1) % count]
-          self.glLine_coord(v0[0], v0[1], v1[0], v1[1])
 
 
+  # Se carga el Modelo
   def loadModel(self, filename, translate = V3(0,0,0), scale = V3(1,1,1), isWireframe = False):
       model = Obj(filename)
 
@@ -321,27 +245,27 @@ class Render(object):
 
       for face in model.faces:
 
-          vertCount = len(face)
+          vcount = len(face)
 
           if isWireframe:
-              for vert in range(vertCount):
+              for vert in range(vcount):
                   v0 = model.vertices[ face[vert][0] - 1 ]
-                  v1 = model.vertices[ face[(vert + 1) % vertCount][0] - 1]
+                  v1 = model.vertices[ face[(vert + 1) % vcount][0] - 1]
                   v0 = V2(round(v0[0] * scale.x  + translate.x),round(v0[1] * scale.y  + translate.y))
                   v1 = V2(round(v1[0] * scale.x  + translate.x),round(v1[1] * scale.y  + translate.y))
-                  self.glLine_coord(v0, v1)
+                  self.glLine(v0, v1)
 
           else:
               v0 = model.vertices[ face[0][0] - 1 ]
               v1 = model.vertices[ face[1][0] - 1 ]
               v2 = model.vertices[ face[2][0] - 1 ]
-              if vertCount > 3:
+              if vcount > 3:
                   v3 = model.vertices[ face[3][0] - 1 ]
 
               v0 = self.transform(v0,translate, scale)
               v1 = self.transform(v1,translate, scale)
               v2 = self.transform(v2,translate, scale)
-              if vertCount > 3:
+              if vcount > 3:
                   v3 = self.transform(v3,translate, scale)
 
               if self.active_texture:
@@ -351,7 +275,7 @@ class Render(object):
                   vt0 = V2(vt0[0], vt0[1])
                   vt1 = V2(vt1[0], vt1[1])
                   vt2 = V2(vt2[0], vt2[1])
-                  if vertCount > 3:
+                  if vcount > 3:
                       vt3 = model.texcoords[face[3][1] - 1]
                       vt3 = V2(vt3[0], vt3[1])
               else:
@@ -367,13 +291,13 @@ class Render(object):
                   self.triangle_bc(v0,v1,v2, texture=self.active_texture, texcoords=(vt0,vt1, vt2), intensity=intensity)
 
                   # Manage square rendering
-                  if vertCount > 3:
+                  if vcount > 3:
                       v3 = model.vertices[ face[3][0] - 1 ]
                       v3 = self.transform(v3,translate, scale)
                       if intensity >=0:
                           self.triangle_bc(v0,v2,v3, color(intensity, intensity, intensity))
 
-  #Barycentric Coordinates
+  # Coordenadas baricentricas
   def triangle_bc(self, A, B, C, texture, _color= WHITE,texcoords = (), intensity = 1):
       #bounding box
       minX = min(A.x, B.x, C.x)
