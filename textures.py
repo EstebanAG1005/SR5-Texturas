@@ -1,3 +1,7 @@
+# SR5-Textures
+# Graficas por computadora 
+# Esteban Aldana Guerra 20591
+
 import struct
 
 def color(r, g, b):
