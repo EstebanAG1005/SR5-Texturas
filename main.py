@@ -7,10 +7,10 @@ from textures import Obj, Texture
 
 import random
 
-r = Render(1200, 1200)
+r = Render(1300, 1300)
 
 t = Texture('model.bmp')
 
-r.load('coffe.obj', (1, 0.5, 0), (600, 600, 600), texture=t)
+r.load('model.obj', (1, 0.5, 0), (700, 700, 700), texture=t)
 
 r.glFinish('output.bmp')
