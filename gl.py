@@ -26,7 +26,7 @@ def dword(c):
 
 # Funcion de Color
 def color(r, g, b):
-    return bytes([int(b * 255), int(g * 255), int(r * 255)])
+    return bytes([b, g, r])
 
 # Funcion que ayuda a convertir floats para poder usar los colores
 def FloatRGB(array):
@@ -101,7 +101,6 @@ class Render(object):
         self.current_color = WHITE
         self.clear_color = BLACK
         self.glCreateWindow(width, height)
-        self.light = V3(0,0,1)
         self.active_texture = None
   
   # Se crea el margen con el cual se va a trabajar
@@ -165,6 +164,12 @@ class Render(object):
   def glColor(self, r, g, b):
       array_colors = FloatRGB([r,g,b])
       self.clear_color = color(array_colors[0], array_colors[1], array_colors[2])
+
+  def point(self, x, y, color = None):
+     try:
+       self.framebuffer[y][x] = color or self.current_color
+     except:
+       pass
       
   # Se Genera archivo .BMP
   def glFinish(self, filename):
@@ -198,150 +203,69 @@ class Render(object):
 
       f.close()
 
-  # Funcion para crear lineas
-  def glLine(self, v0, v1, color = None):
-      x0 = v0.x
-      x1 = v1.x
-      y0 = v0.y
-      y1 = v1.y
-
-      steep = abs(y1 - y0) > abs(x1 - x0)
-
-      if steep:
-          x0, y0 = y0, x0
-          x1, y1 = y1, x1
-      if x0 > x1:
-          x0, x1 = x1, x0
-          y0, y1 = y1, y0
-
-      dx, dy = abs(x1 - x0), abs(y1 - y0)      
-      
-      offset = 0
-      limit =  0.5
-      y = y0
-  
-      try:
-          m = dy/dx
-      except ZeroDivisionError:
-          pass
-          
-      for x in range(x0, x1+1):
-          self.glPoint(y, x, color) if steep else self.glPoint(x, y, color)
-          
-          offset += 2*dy
-
-          if offset >= limit:
-              y += 1 if y0 < y1 else -1
-              limit += 2*dx        
-  
   # Funcion de Transformacion 
-  def transform(self, vertex, translate=V3(0,0,0), scale=V3(1,1,1)):
-      return V3(round(vertex[0] * scale.x + translate.x),
-                round(vertex[1] * scale.y + translate.y),
-                round(vertex[2] * scale.z + translate.z))
+  def transform(self, vertex, translate=(0,0,0), scale=(1,1,1)):
+    t1 = round((vertex[0] + translate[0]) * scale[0])
+    t2 = round((vertex[1] + translate[1]) * scale[1])
+    t3 = round((vertex[2] + translate[2]) * scale[2])
+
+    return V3(t1,t2,t3)
 
 
-  # Se carga el Modelo
-  def loadModel(self, filename, translate = V3(0,0,0), scale = V3(1,1,1), isWireframe = False):
-      model = Obj(filename)
-
+  def load(self, filename, translate=(0, 0, 0), scale=(1, 1, 1),texture=None):
+      objetos = Obj(filename)
       light = V3(0,0,1)
-
-      for face in model.faces:
-
+      #Ciclo para recorrer las carras
+      for face in objetos.faces:
           vcount = len(face)
+          if vcount == 3:
+            f1 = face[0][0] - 1
+            f2 = face[1][0] - 1
+            f3 = face[2][0] - 1
 
-          if isWireframe:
-              for vert in range(vcount):
-                  v0 = model.vertices[ face[vert][0] - 1 ]
-                  v1 = model.vertices[ face[(vert + 1) % vcount][0] - 1]
-                  v0 = V2(round(v0[0] * scale.x  + translate.x),round(v0[1] * scale.y  + translate.y))
-                  v1 = V2(round(v1[0] * scale.x  + translate.x),round(v1[1] * scale.y  + translate.y))
-                  self.glLine(v0, v1)
+            a = self.transform(objetos.vertices[f1], translate, scale)
+            b = self.transform(objetos.vertices[f2], translate, scale)
+            c = self.transform(objetos.vertices[f3], translate, scale)
 
-          else:
-              v0 = model.vertices[ face[0][0] - 1 ]
-              v1 = model.vertices[ face[1][0] - 1 ]
-              v2 = model.vertices[ face[2][0] - 1 ]
-              if vcount > 3:
-                  v3 = model.vertices[ face[3][0] - 1 ]
+            #Calculamos el vector vnormal
+            normal = norm(cross(sub(b,a), sub(c,a)))
+            intensity = dot(normal, light)
+            if intensity<0:
+                continue
+            if texture:
+                t1 = face[0][1] - 1
+                t2 = face[1][1] - 1
+                t3 = face[2][1] - 1
+                tA = V3(*objetos.vertices[t1])
+                tB = V3(*objetos.vertices[t2])
+                tC = V3(*objetos.vertices[t3])
+                #Mandamos los datos a la funcion que se encargara de dibujar el
+                self.triangle(a,b,c, texture=texture, texture_coords=(tA,tB,tC), intensity=intensity)
+            else:
+                grey =round(255*intensity)
+                if grey<0:
+                    continue
+                self.triangle(a,b,c, color=color(grey,grey,grey))
 
-              v0 = self.transform(v0,translate, scale)
-              v1 = self.transform(v1,translate, scale)
-              v2 = self.transform(v2,translate, scale)
-              if vcount > 3:
-                  v3 = self.transform(v3,translate, scale)
-
-              if self.active_texture:
-                  vt0 = model.texcoords[face[0][1] - 1]
-                  vt1 = model.texcoords[face[1][1] - 1]
-                  vt2 = model.texcoords[face[2][1] - 1]
-                  vt0 = V2(vt0[0], vt0[1])
-                  vt1 = V2(vt1[0], vt1[1])
-                  vt2 = V2(vt2[0], vt2[1])
-                  if vcount > 3:
-                      vt3 = model.texcoords[face[3][1] - 1]
-                      vt3 = V2(vt3[0], vt3[1])
-              else:
-                  vt0 = V2(0,0) 
-                  vt1 = V2(0,0) 
-                  vt2 = V2(0,0) 
-                  vt3 = V2(0,0)
-
-              normal = cross(sub(v1,v0), sub(v2,v0))
-              intensity = dot(norm(normal), norm(light))
-
-              if intensity >=0:
-                  self.triangle_bc(v0,v1,v2, texture=self.active_texture, texcoords=(vt0,vt1, vt2), intensity=intensity)
-
-                  # Manage square rendering
-                  if vcount > 3:
-                      v3 = model.vertices[ face[3][0] - 1 ]
-                      v3 = self.transform(v3,translate, scale)
-                      if intensity >=0:
-                          self.triangle_bc(v0,v2,v3, color(intensity, intensity, intensity))
-
-  # Coordenadas baricentricas
-  def triangle_bc(self, A, B, C, texture, _color= WHITE,texcoords = (), intensity = 1):
-      #bounding box
-      minX = min(A.x, B.x, C.x)
-      minY = min(A.y, B.y, C.y)
-      maxX = max(A.x, B.x, C.x)
-      maxY = max(A.y, B.y, C.y)
-
-      for x in range(minX, maxX + 1):
-          for y in range(minY, maxY + 1):
-              if x >= self.width or x < 0 or y >= self.height or y < 0:
-                  continue
-
-              u, v, w = barycentric(A, B, C, V2(x, y))
-
-              if u >= 0 and v >= 0 and w >= 0:
-
-                  z = A.z * u + B.z * v + C.z * w
-                  if z > self.zbuffer[y][x]:
-
-                      b, g, r = _color
-                      b/= 255
-                      g/= 255
-                      r/= 255
-
-                      b*= intensity
-                      g*= intensity
-                      r*= intensity
-
-                      if texture:
-                          ta, tb, tc = texcoords
-
-                          tx = ta.x * u + tb.x * v + tc.x*w
-                          ty = ta.y * u + tb.y * v + tc.y*w
-
-                          texColor = texture.getColor(tx,ty)
-                          b*=texColor[0] /255
-                          g*=texColor[1] /255
-                          r*=texColor[2] /255
-
-                      self.glPoint(x, y, color(r,g,b))
-                      self.zbuffer[y][x] = z
-
-
+  def triangle(self, A, B, C, color=None, texture=None, texture_coords=(), intensity=1):
+    bbox_min, bbox_max = bbox(A, B, C)
+    for x in range(bbox_min.x, bbox_max.x + 1):
+        for y in range(bbox_min.y, bbox_max.y + 1):
+            # coordenadas baricentricas
+            w, v, u = barycentric(A, B, C, V2(x,y))
+            # condicion para evitar los numeros negativos
+            if (w<0) or (v<0) or (u<0):
+                continue
+            if texture:
+                #valores para la coordenadas, que esten el el obj
+                tA, tB, tC = texture_coords
+                tx = tA.x * w + tB.x * v + tC.x * u
+                ty = tA.y * w + tB.y * v + tC.y * u
+                color = texture.intensity(tx, ty, intensity)
+            # valores de z
+            z = A.z * w + B.z * v + C.z * u
+            if (x<0) or (y<0):
+                continue
+            if x < len(self.zbuffer) and y < len(self.zbuffer[x]) and z > self.zbuffer[x][y]:
+                self.point(x, y, color)
+                self.zbuffer[x][y] = z

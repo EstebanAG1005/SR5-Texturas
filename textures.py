@@ -39,6 +39,8 @@ class Texture(object):
   def __init__(self, path):
     self.path = path
     self.read()
+    self.width = 0
+    self.heigth = 0
   
   def read(self):
     with open(self.path, "rb") as image:
@@ -61,8 +63,22 @@ class Texture(object):
             color(r, g, b)
           )
 
-  def getColor(self, tx, ty):
-    x = round(tx * self.width)
-    y = round(ty * self.height)
+  def get_color(self, tx, ty):
+      x = round(tx*self.width)
+      y = round(ty*self.heigth)
 
-    return self.pixels[y][x]
+      return self.pixels[y][x]
+
+  def intensity(self, tx, ty, intensity):
+      x = round(tx*(self.width-1))
+      y = round(ty*(self.heigth-1))
+
+      b = round(self.pixels[y][x][0]*intensity)
+      g = round(self.pixels[y][x][1]*intensity)
+      r = round(self.pixels[y][x][2]*intensity)
+
+      b = max(0, min(b, 255))
+      g = max(0, min(g, 255))
+      r = max(0, min(r, 255))
+
+      return color(b, g, r)
