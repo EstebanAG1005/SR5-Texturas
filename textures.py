@@ -63,7 +63,7 @@ class Texture(object):
             color(r, g, b)
           )
 
-  def get_color(self, tx, ty):
+  def get_color(self, tx, ty, intensity):
       x = round(tx*self.width)
       y = round(ty*self.heigth)
 
@@ -73,9 +73,9 @@ class Texture(object):
       x = round(tx*(self.width-1))
       y = round(ty*(self.heigth-1))
 
-      b = round(self.pixels[y][x][0]*intensity)
-      g = round(self.pixels[y][x][1]*intensity)
-      r = round(self.pixels[y][x][2]*intensity)
+      b = round(self.pixels[y][x][0])
+      g = round(self.pixels[y][x][1])
+      r = round(self.pixels[y][x][2])
 
       b = max(0, min(b, 255))
       g = max(0, min(g, 255))

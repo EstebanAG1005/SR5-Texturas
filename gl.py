@@ -236,10 +236,10 @@ class Render(object):
                 t1 = face[0][1] - 1
                 t2 = face[1][1] - 1
                 t3 = face[2][1] - 1
-                tA = V3(*objetos.vertices[t1])
-                tB = V3(*objetos.vertices[t2])
-                tC = V3(*objetos.vertices[t3])
-                print(tB)
+                tA = V3(*objetos.texcoords[t1])
+                tB = V3(*objetos.texcoords[t2])
+                tC = V3(*objetos.texcoords[t3])
+            
                 
                 #Mandamos los datos a la funcion que se encargara de dibujar el
                 self.triangle(a,b,c, texture=texture, texture_coords=(tA,tB,tC), intensity=intensity)
