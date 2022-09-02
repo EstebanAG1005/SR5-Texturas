@@ -11,6 +11,6 @@ r = Render(1300, 1300)
 
 t = Texture('model.bmp')
 
-r.load('model.obj', (2, 2.5, 1), (300, 300, 300), texture=t)
+r.load('model.obj', (1.5, 1.5, 1), (400, 400, 400), texture=t)
 
 r.glFinish('output.bmp')

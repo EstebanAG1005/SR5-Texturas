@@ -239,16 +239,54 @@ class Render(object):
                 tA = V3(*objetos.texcoords[t1])
                 tB = V3(*objetos.texcoords[t2])
                 tC = V3(*objetos.texcoords[t3])
-            
                 
                 #Mandamos los datos a la funcion que se encargara de dibujar el
                 self.triangle(a,b,c, texture=texture, texture_coords=(tA,tB,tC), intensity=intensity)
             else:
-                grey =round(255*intensity)
+                grey = round(255*intensity)
                 if grey<0:
                     continue
                 self.triangle(a,b,c, color=color(grey,grey,grey))
+          else:
+            # assuming 4
+            f1 = face[0][0] - 1
+            f2 = face[1][0] - 1
+            f3 = face[2][0] - 1
+            f4 = face[3][0] - 1   
 
+            vertices = [
+                self.transform(objetos.vertices[f1], translate, scale),
+                self.transform(objetos.vertices[f2], translate, scale),
+                self.transform(objetos.vertices[f3], translate, scale),
+                self.transform(objetos.vertices[f4], translate, scale)
+            ]
+
+            normal = norm(cross(sub(vertices[0], vertices[1]), sub(vertices[1], vertices[2]))) 
+            intensity = dot(normal, light)
+            if intensity<0:
+                continue
+
+            A, B, C, D = vertices 
+
+            if texture:
+                t1 = face[0][1] - 1
+                t2 = face[1][1] - 1
+                t3 = face[2][1] - 1
+                t4 = face[3][1] - 1
+                tA = V3(*objetos.texcoords[t1])
+                tB = V3(*objetos.texcoords[t2])
+                tC = V3(*objetos.texcoords[t3])
+                tD = V3(*objetos.texcoords[t4])       
+
+                self.triangle(A, B, C, texture=texture, texture_coords=(tA, tB, tC), intensity=intensity)
+                self.triangle(A, C, D, texture=texture, texture_coords=(tA, tC, tD), intensity=intensity)       
+            else:
+                grey = round(255 * intensity)
+                if grey < 0:
+                    continue
+                self.triangle(A, B, C, color(grey, grey, grey))
+                self.triangle(A, C, D, color(grey, grey, grey))  
+            
   def triangle(self, A, B, C, color=None, texture=None, texture_coords=(), intensity=1):
     bbox_min, bbox_max = bbox(A, B, C)
     for x in range(bbox_min.x, bbox_max.x + 1):
