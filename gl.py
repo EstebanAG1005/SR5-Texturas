@@ -212,80 +212,86 @@ class Render(object):
     return V3(t1,t2,t3)
 
 
-  def load(self, filename, translate=(0, 0, 0), scale=(1, 1, 1),texture=None):
-      objetos = Obj(filename)
-      light = V3(0,0,1)
-      #Ciclo para recorrer las carras
-      for face in objetos.faces:
-          vcount = len(face)
-          if vcount == 3:
-            f1 = face[0][0] - 1
-            f2 = face[1][0] - 1
-            f3 = face[2][0] - 1
+  def load(self, filename, translate=(0, 0, 0), scale=(1, 1, 1), texture=None):
+    """
+    Loads an obj file in the screen
+    Input: 
+      filename: the full path of the obj file
+      translate: (translateX, translateY) how much the model will be translated during render
+      scale: (scaleX, scaleY) how much the model should be scaled
+      texture: texture file to use
+    """
+    model = Obj(filename)
+    light = V3(0,0,1)
 
-            a = self.transform(objetos.vertices[f1], translate, scale)
-            b = self.transform(objetos.vertices[f2], translate, scale)
-            c = self.transform(objetos.vertices[f3], translate, scale)
+    for face in model.faces:
+        vcount = len(face)
 
-            #Calculamos el vector vnormal
-            normal = norm(cross(sub(b,a), sub(c,a)))
-            intensity = dot(normal, light)
-            if intensity<0:
-                continue
-            if texture:
-                t1 = face[0][1] - 1
-                t2 = face[1][1] - 1
-                t3 = face[2][1] - 1
-                tA = V3(*objetos.texcoords[t1])
-                tB = V3(*objetos.texcoords[t2])
-                tC = V3(*objetos.texcoords[t3])
-                
-                #Mandamos los datos a la funcion que se encargara de dibujar el
-                self.triangle(a,b,c, texture=texture, texture_coords=(tA,tB,tC), intensity=intensity)
-            else:
-                grey = round(255*intensity)
-                if grey<0:
-                    continue
-                self.triangle(a,b,c, color=color(grey,grey,grey))
+        if vcount == 3:
+          f1 = face[0][0] - 1
+          f2 = face[1][0] - 1
+          f3 = face[2][0] - 1
+
+          a = self.transform(model.vertices[f1], translate, scale)
+          b = self.transform(model.vertices[f2], translate, scale)
+          c = self.transform(model.vertices[f3], translate, scale)
+
+          normal = norm(cross(sub(b, a), sub(c, a)))
+          intensity = dot(normal, light)
+
+          if not texture:
+            grey = round(255 * intensity)
+            if grey < 0:
+              continue
+            self.triangle(a, b, c, color=color(grey, grey, grey))
           else:
-            # assuming 4
-            f1 = face[0][0] - 1
-            f2 = face[1][0] - 1
-            f3 = face[2][0] - 1
-            f4 = face[3][0] - 1   
+            t1 = face[0][1] - 1
+            t2 = face[1][1] - 1
+            t3 = face[2][1] - 1
+            tA = V3(*model.texcoords[t1])
+            tB = V3(*model.texcoords[t2])
+            tC = V3(*model.texcoords[t3])
 
-            vertices = [
-                self.transform(objetos.vertices[f1], translate, scale),
-                self.transform(objetos.vertices[f2], translate, scale),
-                self.transform(objetos.vertices[f3], translate, scale),
-                self.transform(objetos.vertices[f4], translate, scale)
-            ]
+            self.triangle(a, b, c, texture=texture, texture_coords=(tA, tB, tC), intensity=intensity)
+          
+        else:
+          # assuming 4
+          f1 = face[0][0] - 1
+          f2 = face[1][0] - 1
+          f3 = face[2][0] - 1
+          f4 = face[3][0] - 1   
 
-            normal = norm(cross(sub(vertices[0], vertices[1]), sub(vertices[1], vertices[2]))) 
-            intensity = dot(normal, light)
-            if intensity<0:
-                continue
+          vertices = [
+            self.transform(model.vertices[f1], translate, scale),
+            self.transform(model.vertices[f2], translate, scale),
+            self.transform(model.vertices[f3], translate, scale),
+            self.transform(model.vertices[f4], translate, scale)
+          ]
 
-            A, B, C, D = vertices 
+          normal = norm(cross(sub(vertices[0], vertices[1]), sub(vertices[1], vertices[2])))  # no necesitamos dos normales!!
+          intensity = dot(normal, light)
+          grey = round(255 * intensity)
 
-            if texture:
-                t1 = face[0][1] - 1
-                t2 = face[1][1] - 1
-                t3 = face[2][1] - 1
-                t4 = face[3][1] - 1
-                tA = V3(*objetos.texcoords[t1])
-                tB = V3(*objetos.texcoords[t2])
-                tC = V3(*objetos.texcoords[t3])
-                tD = V3(*objetos.texcoords[t4])       
+          A, B, C, D = vertices 
 
-                self.triangle(A, B, C, texture=texture, texture_coords=(tA, tB, tC), intensity=intensity)
-                self.triangle(A, C, D, texture=texture, texture_coords=(tA, tC, tD), intensity=intensity)       
-            else:
-                grey = round(255 * intensity)
-                if grey < 0:
-                    continue
-                self.triangle(A, B, C, color(grey, grey, grey))
-                self.triangle(A, C, D, color(grey, grey, grey))  
+          if not texture:
+            grey = round(255 * intensity)
+            if grey < 0:
+              continue
+            self.triangle(A, B, C, color(grey, grey, grey))
+            self.triangle(A, C, D, color(grey, grey, grey))            
+          else:
+            t1 = face[0][1] - 1
+            t2 = face[1][1] - 1
+            t3 = face[2][1] - 1
+            t4 = face[3][1] - 1
+            tA = V3(*model.texcoords[t1],0)
+            tB = V3(*model.texcoords[t2],0)
+            tC = V3(*model.texcoords[t3],0)
+            tD = V3(*model.texcoords[t4],0)
+            
+            self.triangle(A, B, C, texture=texture, texture_coords=(tA, tB, tC), intensity=intensity)
+            self.triangle(A, C, D, texture=texture, texture_coords=(tA, tC, tD), intensity=intensity)
             
   def triangle(self, A, B, C, color=None, texture=None, texture_coords=(), intensity=1):
     bbox_min, bbox_max = bbox(A, B, C)

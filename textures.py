@@ -3,8 +3,13 @@
 # Esteban Aldana Guerra 20591
 
 import struct
+import math
+
 
 def color(r, g, b):
+    r = int(min(255, max(r, 0)))
+    g = int(min(255, max(g, 0)))
+    b = int(min(255, max(b, 0)))
     return bytes([b, g, r])
 
 class Obj(object):

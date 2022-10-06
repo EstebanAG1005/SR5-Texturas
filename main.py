@@ -9,8 +9,8 @@ import random
 
 r = Render(1300, 1300)
 
-t = Texture('model.bmp')
+t = Texture('coca.bmp')
 
-r.load('model.obj', (1.5, 1.5, 1), (400, 400, 400), texture=t)
+r.load('cocacola.obj', (-5, 1.5, 0), (100, 100, 100), texture=t)
 
 r.glFinish('output.bmp')
